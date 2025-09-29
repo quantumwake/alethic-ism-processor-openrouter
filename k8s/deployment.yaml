@@ -68,10 +68,10 @@ spec:
                 name: alethic-ism-processor-openrouter-secret
                 key: DATABASE_URL
 
-          - name: openrouter_API_KEY
+          - name: OPENROUTER_API_KEY
             valueFrom:
               secretKeyRef:
                 name: alethic-ism-processor-openrouter-secret
-                key: openrouter_API_KEY
+                key: OPENROUTER_API_KEY
       imagePullSecrets:
       - name: regcred

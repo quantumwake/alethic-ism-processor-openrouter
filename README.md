@@ -1,12 +1,12 @@
-# Alethic Instruction-based State Machine (OpenAI Processor)
+# Alethic ISM Processor - OpenRouter
 
-A microservice processor that handles OpenAI language and visual model requests within the Alethic Instruction-based State Machine (ISM) framework.
+A microservice processor that handles multi-model AI requests through OpenRouter within the Alethic Instruction-based State Machine (ISM) framework.
 
 ## Overview
 
-This project implements:
-- OpenAI Chat Completion (GPT) processor
-- OpenAI Visual Completion (DALL-E) processor
+This project provides a unified interface to multiple AI models through OpenRouter, including:
+- Support for various language models (GPT-4, Claude, Llama, etc.)
+- Multi-provider model access through a single API
 - Message-driven architecture using NATS message broker
 - State persistence using PostgreSQL
 - Docker containerization for deployments
@@ -15,9 +15,9 @@ This project implements:
 ## Features
 
 - Stateful message processing using Alethic ISM Core framework
-- Connection to OpenAI API for language and image generation
+- Unified access to multiple AI models via OpenRouter
 - Token usage monitoring and tracking
-- Stream response support for chat completions
+- Stream response support for completions
 - Usage telemetry support
 - Configurable deployment for various environments
 
@@ -27,7 +27,7 @@ This project implements:
 - [UV](https://github.com/astral-sh/uv) package manager
 - PostgreSQL database
 - NATS message broker
-- OpenAI API key
+- OpenRouter API key
 
 ## Getting Started
 
@@ -48,7 +48,7 @@ uv pip install -r requirements.txt
 ### Environment Variables
 
 Required environment variables:
-- `OPENAI_API_KEY`: Your OpenAI API key
+- `OPENROUTER_API_KEY`: Your OpenRouter API key
 - `ROUTING_FILE`: Path to the message routing configuration (default: `.routing.yaml`)
 - `DATABASE_URL`: PostgreSQL connection string (default: `postgresql://postgres:postgres1@localhost:5432/postgres`)
 - `LOG_LEVEL`: Logging level (default: `INFO`)
@@ -78,7 +78,7 @@ docker build -t yourusername/alethic-ism-processor-openrouter:tag .
 ```shell
 docker run -d \
   --name alethic-ism-processor-openrouter \
-  -e OPENAI_API_KEY="your_api_key_here" \
+  -e OPENROUTER_API_KEY="your_api_key_here" \
   -e LOG_LEVEL=DEBUG \
   -e ROUTING_FILE=/app/repo/.routing.yaml \
   -e DATABASE_URL="postgresql://postgres:postgres1@host.docker.internal:5432/postgres" \
@@ -119,7 +119,7 @@ This will:
 Key dependencies:
 - `alethic-ism-core`: Core ISM framework
 - `alethic-ism-db`: Database interface for ISM
-- `openai`: OpenAI Python client
+- `openai`: OpenAI Python client (used for OpenRouter compatibility)
 - `nats-py`: NATS.io client
 
 ## License

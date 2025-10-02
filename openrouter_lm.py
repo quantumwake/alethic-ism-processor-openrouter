@@ -40,11 +40,18 @@ class OpenRouterChatCompletionProcessor(BaseProcessorLM, MonitoredUsage):
             api_key=OPENROUTER_API_KEY,
         )
 
+        # Processor Runtime Properties
+        properties = self.properties
+
         # Create a streaming completion
         stream = client.chat.completions.create(
             model=self.provider.version,
             messages=message_list,
-            max_tokens=4096,
+            max_tokens=properties.max_tokens,
+            temperature=properties.temperature,
+            top_p=properties.top_p,
+            frequency_penalty=properties.frequencyPenalty,
+            presence_penalty=properties.presencePenalty,
             stream=True,
             stream_options={"include_usage": True}  # Standard OpenAI format for usage in streams
         )
@@ -101,9 +108,18 @@ class OpenRouterChatCompletionProcessor(BaseProcessorLM, MonitoredUsage):
             api_key=OPENROUTER_API_KEY,
         )
 
+        # Processor Runtime Properties
+        properties = self.properties
+
+        # Create a streaming completion
         stream = client.chat.completions.create(
             model=self.provider.version,
             messages=messages_dict,
+            max_tokens=properties.maxTokens,
+            temperature=properties.temperature,
+            top_p=properties.topP,
+            frequency_penalty=properties.frequencyPenalty,
+            presence_penalty=properties.presencePenalty,
             stream=False,
         )
 

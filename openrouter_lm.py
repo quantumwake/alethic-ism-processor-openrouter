@@ -1,10 +1,11 @@
+import logging
 import os.path
 from typing import Any, List
 
 import httpx
 import openai
 import dotenv
-from tenacity import retry, stop_after_attempt, wait_exponential_jitter, retry_if_exception
+from tenacity import retry, stop_after_attempt, wait_exponential_jitter, retry_if_exception, before_sleep_log
 from ismcore.processor.base_processor_lm import BaseProcessorLM
 from ismcore.processor.monitored_processor_state import MonitoredUsage
 from ismcore.utils.general_utils import parse_response
@@ -16,8 +17,9 @@ dotenv.load_dotenv()
 OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY', None)
 openai.api_key = OPENROUTER_API_KEY
 
-logging = ism_logger(__name__)
-logging.info(f'**** OPENROUTER API KEY (last 4 chars): {OPENROUTER_API_KEY[-4:]} ****')
+logger = ism_logger(__name__)
+logger.info(f'**** OPENROUTER API KEY (last 4 chars): {OPENROUTER_API_KEY[-4:]} ****')
+
 
 
 def _is_retryable(e: BaseException) -> bool:
@@ -95,6 +97,7 @@ class OpenRouterChatCompletionProcessor(BaseProcessorLM, MonitoredUsage):
         stop=stop_after_attempt(5),
         wait=wait_exponential_jitter(initial=1, max=10),
         retry=retry_if_exception(_is_retryable),
+        before_sleep=before_sleep_log(logger, logging.WARNING),
         reraise=True,
     )
     async def _execute(self, user_prompt: str, system_prompt: str, values: dict):

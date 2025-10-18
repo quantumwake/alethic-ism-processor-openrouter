@@ -1,14 +1,15 @@
 import os.path
-from io import UnsupportedOperation
 from typing import Any, List
 
+import httpx
 import openai
 import dotenv
+from tenacity import retry, stop_after_attempt, wait_exponential_jitter, retry_if_exception
 from ismcore.processor.base_processor_lm import BaseProcessorLM
 from ismcore.processor.monitored_processor_state import MonitoredUsage
 from ismcore.utils.general_utils import parse_response
 from ismcore.utils.ism_logger import ism_logger
-from openai import OpenAI
+from openai import OpenAI, APIConnectionError, APITimeoutError, RateLimitError, APIStatusError
 
 dotenv.load_dotenv()
 
@@ -17,6 +18,13 @@ openai.api_key = OPENROUTER_API_KEY
 
 logging = ism_logger(__name__)
 logging.info(f'**** OPENROUTER API KEY (last 4 chars): {OPENROUTER_API_KEY[-4:]} ****')
+
+
+def _is_retryable(e: BaseException) -> bool:
+    if isinstance(e, httpx.HTTPStatusError):
+        status = e.response.status_code if e.response else None
+        return status in (429, 500, 502, 503, 504)
+    return isinstance(e, (httpx.ConnectError, httpx.ReadTimeout, httpx.ConnectTimeout))
 
 
 class OpenRouterChatCompletionProcessor(BaseProcessorLM, MonitoredUsage):
@@ -83,6 +91,12 @@ class OpenRouterChatCompletionProcessor(BaseProcessorLM, MonitoredUsage):
         await self.send_usage_input_tokens(input_token_count)
         await self.send_usage_output_tokens(output_token_count)
 
+    @retry(
+        stop=stop_after_attempt(5),
+        wait=wait_exponential_jitter(initial=1, max=10),
+        retry=retry_if_exception(_is_retryable),
+        reraise=True,
+    )
     async def _execute(self, user_prompt: str, system_prompt: str, values: dict):
         messages_dict = []
 

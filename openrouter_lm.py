@@ -1,6 +1,6 @@
 import logging
 import os.path
-from typing import Any, List
+from typing import Any
 
 import httpx
 import openai
@@ -10,7 +10,7 @@ from ismcore.processor.base_processor_lm import BaseProcessorLM
 from ismcore.processor.monitored_processor_state import MonitoredUsage
 from ismcore.utils.general_utils import parse_response
 from ismcore.utils.ism_logger import ism_logger
-from openai import OpenAI, APIConnectionError, APITimeoutError, RateLimitError, APIStatusError
+from openai import OpenAI
 
 dotenv.load_dotenv()
 
@@ -19,7 +19,6 @@ openai.api_key = OPENROUTER_API_KEY
 
 logger = ism_logger(__name__)
 logger.info(f'**** OPENROUTER API KEY (last 4 chars): {OPENROUTER_API_KEY[-4:]} ****')
-
 
 
 def _is_retryable(e: BaseException) -> bool:

@@ -4,7 +4,7 @@ metadata:
   name: alethic-ism-processor-openrouter-deployment
   namespace: alethic
 spec:
-  replicas: 1 
+  replicas: 2
   selector:
     matchLabels:
       app: alethic-ism-processor-openrouter

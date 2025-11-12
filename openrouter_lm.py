@@ -139,8 +139,14 @@ class OpenRouterChatCompletionProcessor(BaseProcessorLM, MonitoredUsage):
             stream=False,
         )
 
-        await self.send_usage_input_tokens(stream.usage.prompt_tokens)
-        await self.send_usage_output_tokens(stream.usage.completion_tokens)
+        # extract usage information
+        extra = {
+            "upstream_generation_id": stream.id,
+            "upstream_model_provider": stream.model_extra["provider"]
+        }
+
+        await self.send_usage_input_tokens(stream.usage.prompt_tokens, metadata=extra)
+        await self.send_usage_output_tokens(stream.usage.completion_tokens, metadata=extra)
 
         # final raw response, without stripping or splitting
         raw_response = stream.choices[0].message.content

@@ -42,13 +42,14 @@ openrouter_route = router.find_route_by_subject("processor.models.openrouter")
 state_sync_route = router.find_route('processor/state/sync')
 state_router_route = router.find_route('processor/state/router')
 state_stream_route = router.find_route("processor/state")
+state_edge_function_route = router.find_route("processor/edge/function")
 usage_route = router.find_route("processor/usage")
 
 state_propagation_provider = StatePropagationProviderDistributor(
     propagators=[
         StatePropagationProviderRouterStateSyncStore(route=state_sync_route),
         StatePropagationProviderRouterStateRouter(route=state_router_route, storage=storage)
-    ]
+    ], edge_function_route=state_edge_function_route
 )
 
 

@@ -10,7 +10,7 @@ from ismcore.processor.base_processor_lm import BaseProcessorLM
 from ismcore.processor.monitored_processor_state import MonitoredUsage
 from ismcore.utils.general_utils import parse_response
 from ismcore.utils.ism_logger import ism_logger
-from openai import OpenAI
+from openai import AsyncOpenAI
 
 dotenv.load_dotenv()
 
@@ -44,7 +44,7 @@ class OpenRouterChatCompletionProcessor(BaseProcessorLM, MonitoredUsage):
         # TODO FLAG: OFF history flag injected here
         # TODO FEATURE: CONFIG PARAMETERS -> EMBEDDINGS
 
-        client = OpenAI(
+        client = AsyncOpenAI(
             base_url="https://openrouter.ai/api/v1",
             api_key=OPENROUTER_API_KEY,
         )
@@ -53,7 +53,7 @@ class OpenRouterChatCompletionProcessor(BaseProcessorLM, MonitoredUsage):
         properties = self.properties
 
         # Create a streaming completion
-        stream = client.chat.completions.create(
+        stream = await client.chat.completions.create(
             model=self.provider.version,
             messages=message_list,
             max_tokens=properties.max_tokens,
@@ -70,7 +70,7 @@ class OpenRouterChatCompletionProcessor(BaseProcessorLM, MonitoredUsage):
         input_token_count = 0
         output_token_count = 0
 
-        for chunk in stream:
+        async for chunk in stream:
             # Check for usage data (usually in the last chunk)
             if hasattr(chunk, 'usage') and chunk.usage:
                 input_token_count = chunk.usage.prompt_tokens
@@ -119,7 +119,7 @@ class OpenRouterChatCompletionProcessor(BaseProcessorLM, MonitoredUsage):
         if not messages_dict:
             raise Exception(f'no prompts specified for values {values}')
 
-        client = OpenAI(
+        client = AsyncOpenAI(
             base_url="https://openrouter.ai/api/v1",
             api_key=OPENROUTER_API_KEY,
         )
@@ -127,8 +127,8 @@ class OpenRouterChatCompletionProcessor(BaseProcessorLM, MonitoredUsage):
         # Processor Runtime Properties
         properties = self.properties
 
-        # Create a streaming completion
-        stream = client.chat.completions.create(
+        # Create completion
+        response = await client.chat.completions.create(
             model=self.provider.version,
             messages=messages_dict,
             max_tokens=properties.maxTokens,
@@ -141,13 +141,13 @@ class OpenRouterChatCompletionProcessor(BaseProcessorLM, MonitoredUsage):
 
         # extract usage information
         extra = {
-            "upstream_generation_id": stream.id,
-            "upstream_model_provider": stream.model_extra["provider"]
+            "upstream_generation_id": response.id,
+            "upstream_model_provider": response.model_extra["provider"]
         }
 
-        await self.send_usage_input_tokens(stream.usage.prompt_tokens, metadata=extra)
-        await self.send_usage_output_tokens(stream.usage.completion_tokens, metadata=extra)
+        await self.send_usage_input_tokens(response.usage.prompt_tokens, metadata=extra)
+        await self.send_usage_output_tokens(response.usage.completion_tokens, metadata=extra)
 
         # final raw response, without stripping or splitting
-        raw_response = stream.choices[0].message.content
+        raw_response = response.choices[0].message.content
         return parse_response(raw_response=raw_response)

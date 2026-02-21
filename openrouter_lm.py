@@ -99,7 +99,10 @@ class OpenRouterChatCompletionProcessor(BaseProcessorLM, MonitoredUsage):
         before_sleep=before_sleep_log(logger, logging.WARNING),
         reraise=True,
     )
-    async def _execute(self, user_prompt: str, system_prompt: str, values: dict):
+
+    async def _execute(self, user_prompt: str, system_prompt: str, values: dict | list[dict])\
+            -> tuple[dict | list[dict] | None, any]:
+
         messages_dict = []
 
         if user_prompt:

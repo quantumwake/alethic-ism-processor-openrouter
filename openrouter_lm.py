@@ -1,6 +1,6 @@
 import logging
 import os.path
-from typing import Any
+from typing import List
 
 import httpx
 import openai
@@ -30,63 +30,52 @@ def _is_retryable(e: BaseException) -> bool:
 
 class OpenRouterChatCompletionProcessor(BaseProcessorLM, MonitoredUsage):
 
-    def __init__(self, **kwargs):
+    def     __init__(self, **kwargs):
         super().__init__(**kwargs)
         MonitoredUsage.__init__(self, **kwargs)
 
-    async def _stream(self, input_data: Any, template: str):
-
-        if not template:
-            template = str(input_data)
-
-        # rendered message we want to submit to the model
-        message_list = self.derive_messages_with_session_data_if_any(template=template, input_data=input_data)
-        # TODO FLAG: OFF history flag injected here
-        # TODO FEATURE: CONFIG PARAMETERS -> EMBEDDINGS
+    async def stream_llm(self, user_prompt: str, system_prompt: str, values: dict | List[dict]):
+        message_list = self.derive_messages_with_session_data_if_any(
+            user_prompt=user_prompt, system_prompt=system_prompt, input_data=values
+        )
 
         client = AsyncOpenAI(
             base_url="https://openrouter.ai/api/v1",
             api_key=OPENROUTER_API_KEY,
         )
 
-        # Processor Runtime Properties
         properties = self.properties
 
-        # Create a streaming completion
         stream = await client.chat.completions.create(
             model=self.provider.version,
             messages=message_list,
-            max_tokens=properties.max_tokens,
+            max_tokens=properties.maxTokens,
             temperature=properties.temperature,
-            top_p=properties.top_p,
+            top_p=properties.topP,
             frequency_penalty=properties.frequencyPenalty,
             presence_penalty=properties.presencePenalty,
             stream=True,
-            stream_options={"include_usage": True}  # Standard OpenAI format for usage in streams
+            stream_options={"include_usage": True}
         )
 
-        # Iterate over the streamed responses and yield the content
         output_data = []
         input_token_count = 0
         output_token_count = 0
 
         async for chunk in stream:
-            # Check for usage data (usually in the last chunk)
             if hasattr(chunk, 'usage') and chunk.usage:
                 input_token_count = chunk.usage.prompt_tokens
                 output_token_count = chunk.usage.completion_tokens
 
-            # Process content
             if chunk.choices and len(chunk.choices) > 0:
                 content = chunk.choices[0].delta.content
                 if content:
                     output_data.append(content)
                     yield content
 
-        # add both the user and assistant generated data to the session
         self.update_session_data(
-            input_data=input_data,
-            input_template=template,
+            input_data=values,
+            input_template=user_prompt,
             output_data="".join(output_data))
 
         await self.send_usage_input_tokens(input_token_count)
@@ -99,25 +88,12 @@ class OpenRouterChatCompletionProcessor(BaseProcessorLM, MonitoredUsage):
         before_sleep=before_sleep_log(logger, logging.WARNING),
         reraise=True,
     )
-
-    async def _execute(self, user_prompt: str, system_prompt: str, values: dict | list[dict])\
+    async def execute_llm(self, user_prompt: str, system_prompt: str, values: dict | list[dict])\
             -> tuple[dict | list[dict] | None, any]:
 
-        messages_dict = []
-
-        if user_prompt:
-            user_prompt = user_prompt.strip()
-            messages_dict.append({
-                "role": "user",
-                "content": f"{user_prompt}"
-            })
-
-        if system_prompt:
-            system_prompt = system_prompt.strip()
-            messages_dict.append({
-                "role": "system",
-                "content": system_prompt
-            })
+        messages_dict = self.derive_messages_with_session_data_if_any(
+            user_prompt=user_prompt, system_prompt=system_prompt, input_data=values
+        )
 
         if not messages_dict:
             raise Exception(f'no prompts specified for values {values}')
@@ -127,10 +103,8 @@ class OpenRouterChatCompletionProcessor(BaseProcessorLM, MonitoredUsage):
             api_key=OPENROUTER_API_KEY,
         )
 
-        # Processor Runtime Properties
         properties = self.properties
 
-        # Create completion
         response = await client.chat.completions.create(
             model=self.provider.version,
             messages=messages_dict,
@@ -142,7 +116,6 @@ class OpenRouterChatCompletionProcessor(BaseProcessorLM, MonitoredUsage):
             stream=False,
         )
 
-        # extract usage information
         extra = {
             "upstream_generation_id": response.id,
             "upstream_model_provider": response.model_extra["provider"]
@@ -151,6 +124,5 @@ class OpenRouterChatCompletionProcessor(BaseProcessorLM, MonitoredUsage):
         await self.send_usage_input_tokens(response.usage.prompt_tokens, metadata=extra)
         await self.send_usage_output_tokens(response.usage.completion_tokens, metadata=extra)
 
-        # final raw response, without stripping or splitting
         raw_response = response.choices[0].message.content
         return parse_response(raw_response=raw_response)
